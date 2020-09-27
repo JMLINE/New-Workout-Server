@@ -1,39 +1,20 @@
-require('dotenv').config();
+require("dotenv").config();
+let express = require("express");
+let app = express();
 
-var express = require('express');
-var app = express();
-var authTest = require('./controllers/authtestcontroller');
+let sequelize = require("./db");
 
-var testController = require('./controllers/testcontroller')
-var user = require('./controllers/usercontroller')
+let user = require("./controllers/usercontroller.js");
+let authTest = require("./controllers/authtestcontroller");
+sequelize.sync();
+// sequelize.sync({force: true});
+app.use(require("./middleware/headers"));
 
-var sequelize = require('./db')
-var bodyParser = require('body-parser');
+app.use(express.json());
+app.use("/api/user", user);
 
-sequelize.sync(); // tip: {force: true} for resetting tables
-app.use(bodyParser.json());
-// app.use(express.json())
-app.use(require('./middleware/headers'));
-
-
-
-/******************
- * EXPOSED ROUTES
-*******************/
-app.use('/test', testController)
-//Workout Log Routes
-app.use('/api/user', user)
-
-
-/******************
- * PROTECTED ROUTES
-*******************/
-app.use(require('./middleware/validate-session')); // Any routes below 'validate session' requires a token, making it a protected route //
-app.use('/authtest', authTest);
-
-
-
-
-app.listen(3000, function(){
-    console.log('The app is listening on port 3000 dawg')
+app.use(require("./middleware/validate-session"));
+app.use("/authtest", authTest);
+app.listen(3000, function () {
+  console.log("app is listening to port 3000");
 });

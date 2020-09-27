@@ -1,30 +1,42 @@
-var jwt = require('jsonwebtoken');
-var sequelize = require('../db');
-var User = require('../models/userModel')(sequelize.DataTypes);
-var AuthTestModel = require('../models/authtest')(sequelize.DataTypes);
+const jwt = require("jsonwebtoken");
+const User = require("../db").import("../models/userModel");
 
+const validateSession = (req, res, next) => {
+  if (req.method === "OPTIONS") {
+    next();
+  } else {
+    const token = req.headers.authorization;
+    console.log("token --> ", token);
 
-module.exports = function(req, res, next) {
- // if (req.method == 'OPTIONS') {
- // next()
- // } else {
- var sessionToken = req.headers.authorization; //1
- console.log(sessionToken) //2
- if (!sessionToken) return res.status(403).send({ authorizationalfication: false, WHY: 'No token provided.' }); //3
- else { //4
- jwt.verify(sessionToken, process.env.JWT_SECRET, (err, decoded) => { //5
- if(decoded){
- User.findOne({where: { id: decoded.id}}).then(user => { //6
- req.user = user; //7
- next();
- },
- function(){ //8
- res.status(401).send({error: 'Not authorized'});
- });
- } else { //9
- res.status(400).send({error: 'Not authorized'});
- }
- });
- }
- //}
-}
+    if (!token) {
+      return res
+        .status(403)
+        .send({ auth: false, message: "No token provided" });
+    } else {
+      jwt.verify(token, process.env.JWT_SECRET, (err, decodeToken) => {
+        console.log("decodeToken --> ", decodeToken);
+        if (!err && decodeToken) {
+          User.findOne({
+            where: {
+              id: decodeToken.id,
+            },
+          })
+
+            .then((user) => {
+              console.log("user --> ", user);
+              if (!user) throw err;
+              console.log("req --> ", req);
+              req.user = user;
+              return next();
+            })
+            .catch((err) => next(err));
+        } else {
+          req.errors = err;
+          return res.status(500).send("Not Authorized");
+        }
+      });
+    }
+  }
+};
+
+module.exports = validateSession;

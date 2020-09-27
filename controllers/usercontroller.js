@@ -1,74 +1,71 @@
-var express = require('express');
-var router = express.Router();
-var sequelize = require('../db');
-var jwt = require('jsonwebtoken');
-var encrypt = require('bcrypt')
+const router = require("express").Router();
+const User = require("../db").import("../models/userModel");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
 //Model
-var User = require('../models/userModel')(sequelize.DataTypes);
 
-router.post('/createuser', function (req,res){
-        
-    var username = req.body.user.username;
-        var pass = req.body.user.password;
+router.post("/createuser", function (req, res) {
+  User.create({
+    username: req.body.user.username,
+    passwordhash: bcrypt.hashSync(req.body.user.passwordhash, 13),
+  }).then(
+    function createSuccess(user) {
+      var cred = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+        expiresIn: 60 * 60 * 12,
+      });
 
-        User.create({
-            username:username,
-            passwordhash:encrypt.hashSync(pass, 10)
+      res.json({
+        user: user,
+        message: "created",
+        userToken: cred,
+      });
+    },
+    function createError(err) {
+      res.send(500, err.message);
+    }
+  );
+});
 
-        }).then(
-            function createSuccess(user){
+router.post("/signin", function (req, res) {
+  User.findOne({
+    where: {
+      username: req.body.user.username,
+    },
+  }).then(
+    function (userInfo) {
+      if (userInfo) {
+        bcrypt.compare(
+          req.body.user.passwordhash,
+          userInfo.passwordhash,
+          function (err, matches) {
+            if (matches) {
+              var cred = jwt.sign({ id: userInfo.id }, process.env.JWT_SECRET, {
+                expiresIn: 60 * 60 * 12,
+              });
 
-                var cred = jwt.sign({id:user.id}, process.env.JWT_SECRET, {expiresIn:60*60*12});
-
-                res.json({
-                    user:user,
-                    message:'created',
-                    userToken: cred
-                });
-            },
-            function createError(err){
-                res.send(500, err.message);
-            }
-        );
-})
-
-router.post('/signin', function(req, res) {
-
-    User.findOne({
-        where: {
-            username: req.body.user.username
-        }
-    }).then(
-
-        function(userInfo) {
-            if (userInfo) {
-                
-                encrypt.compare(req.body.user.password, userInfo.passwordhash, function(err,matches){
-                    if(matches) {
-                        var cred = jwt.sign({id:userInfo.id}, process.env.JWT_SECRET, {expiresIn:60*60*12});
-                        
-                        res.json({
-                            user:userInfo,
-                            message: 'You\'re authenitcated',
-                            userToken: cred
-                        })
-                    } else {
-                        res.status(502).send({error: '502 error dawg'})
-                    }
-                });
+              res.json({
+                user: userInfo,
+                message: "You're authenitcated",
+                userToken: cred,
+              });
             } else {
-                res.status(500).send({
-                    error: 'you failed to authenticate, G'
-                })
+              res.status(502).send({ error: "502 error dawg" });
             }
-        }, function (err) {
-            res.status(501).send({
-                error: 'This failure message comes from the 2nd error function'
-            })
-        }
-
-    )
+          }
+        );
+      } else {
+        res.status(500).send({
+          error: "you failed to authenticate, G",
+        });
+      }
+    },
+    function (err) {
+      res.status(501).send({
+        error: "This failure message comes from the 2nd error function",
+      });
+    }
+  );
 });
 
 module.exports = router;

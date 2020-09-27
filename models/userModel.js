@@ -1,12 +1,14 @@
-module.exports = function (sequelize, DataTypes) {
-
-    //Two variables added that fixed "Cannot find property 'define' of undefined"
-    var sequelize = require('../db');
-    var DataTypes = require('sequelize/lib/data-types');
-
-    return sequelize.define('user', {
-
-        username:DataTypes.STRING,
-        passwordhash: DataTypes.STRING
-    });
-}
+module.exports = (sequelize, DataTypes) => {
+  const User = sequelize.define("user", {
+    username: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    passwordhash: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  });
+  return User;
+};
